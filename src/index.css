@@ -1,0 +1,155 @@
+/* lab7-website · triangulation DP visualizer
+ * แนว: เครื่องมือแน่นข้อมูล (แบบ notebook / dev tool) ตาราง dp กับภาพ polygon เป็นตัวเอก
+ * สี: ยึด teal + coral จากหน้าเดิม (index.ts) ซึ่งมีความหมายในภาพอยู่แล้ว
+ *   teal  = ช่วง P_i..P_j ที่ DP กำลังพิจารณา และเป็น primary ของปุ่ม (ใช้เฉดเข้มขึ้นเพื่อให้ตัวหนังสือขาวผ่านคอนทราสต์)
+ *   coral = สามเหลี่ยม (i,k,j) / คำตอบ / แบบที่ดีที่สุด เป็นสีเน้นสีเดียว ใช้เฉพาะในภาพและคำตอบ ห้ามใช้กับปุ่ม
+ *   เทาทุกตัวผสม hue ของ teal จางๆ
+ * พื้นผิว: เส้นขนแมว (ring/border) ไม่มีเงา, radius เล็ก 0.5rem ใช้ทั้งเว็บ
+ * ฟอนต์: IBM Plex Sans Thai (มีหัว มี Latin ในตัว) + IBM Plex Mono สำหรับตัวเลข/สมการ/พิกัด
+ * container: max-w-6xl px-4 ทุก section
+ * ลดทอนจากหน้าเดิม: สีน้ำเงินของช่องตารางปัจจุบัน → เปลี่ยนเป็น teal เพื่อให้เหลือสองสี
+ */
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource/ibm-plex-sans-thai/400.css";
+@import "@fontsource/ibm-plex-sans-thai/500.css";
+@import "@fontsource/ibm-plex-sans-thai/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* 1. พาเลตต์ (ค่าสีดิบชุดเดียวของทั้งเว็บ) */
+:root {
+    --lagoon-deep: oklch(0.42 0.085 166);
+    --lagoon-strong: oklch(0.5 0.1 166);
+    --lagoon: oklch(0.623 0.123 165.5);      /* teal เดิม #1D9E75 */
+    --lagoon-light: oklch(0.76 0.09 166);
+    --lagoon-mist: oklch(0.95 0.02 166);
+
+    --ember: oklch(0.623 0.168 38.3);        /* coral เดิม #D85A30 */
+    --ember-strong: oklch(0.55 0.16 38);
+    --ember-light: oklch(0.74 0.13 40);
+
+    --ink: oklch(0.2 0.012 166);
+    --ink-soft: oklch(0.5 0.014 166);
+    --paper: oklch(0.985 0.004 166);
+    --paper-raised: oklch(1 0 0);
+    --paper-sunken: oklch(0.955 0.007 166);
+    --hairline: oklch(0.9 0.008 166);
+
+    --night: oklch(0.18 0.01 166);
+    --night-raised: oklch(0.215 0.011 166);
+    --night-sunken: oklch(0.26 0.012 166);
+    --moon: oklch(0.95 0.006 166);
+    --moon-soft: oklch(0.72 0.012 166);
+}
+
+/* 2. token ของ shadcn ผูกกลับเข้าพาเลตต์ */
+:root {
+    --background: var(--paper);
+    --foreground: var(--ink);
+    --card: var(--paper-raised);
+    --card-foreground: var(--ink);
+    --popover: var(--paper-raised);
+    --popover-foreground: var(--ink);
+    --primary: var(--lagoon-strong);
+    --primary-foreground: var(--paper-raised);
+    --secondary: var(--paper-sunken);
+    --secondary-foreground: var(--ink);
+    --muted: var(--paper-sunken);
+    --muted-foreground: var(--ink-soft);
+    --accent: var(--lagoon-mist);
+    --accent-foreground: var(--lagoon-deep);
+    --destructive: var(--ember-strong);
+    --border: var(--hairline);
+    --input: var(--hairline);
+    --ring: var(--lagoon);
+    --radius: 0.5rem;
+
+    /* สีในภาพ */
+    --viz-range: var(--lagoon);
+    --viz-tri: var(--ember);
+    --viz-tri-text: var(--ember-strong);
+}
+
+.dark {
+    --background: var(--night);
+    --foreground: var(--moon);
+    --card: var(--night-raised);
+    --card-foreground: var(--moon);
+    --popover: var(--night-sunken);
+    --popover-foreground: var(--moon);
+    --primary: var(--lagoon-light);
+    --primary-foreground: var(--night);
+    --secondary: var(--night-sunken);
+    --secondary-foreground: var(--moon);
+    --muted: var(--night-sunken);
+    --muted-foreground: var(--moon-soft);
+    --accent: oklch(0.623 0.123 165.5 / 16%);
+    --accent-foreground: var(--lagoon-light);
+    --destructive: var(--ember-light);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 14%);
+    --ring: var(--lagoon-light);
+
+    --viz-range: var(--lagoon-light);
+    --viz-tri: var(--ember-light);
+    --viz-tri-text: var(--ember-light);
+}
+
+/* 3. เปิด token ให้ Tailwind รู้จัก */
+@theme inline {
+    --font-sans: "IBM Plex Sans Thai", ui-sans-serif, system-ui, sans-serif;
+    --font-heading: var(--font-sans);
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-viz-range: var(--viz-range);
+    --color-viz-tri: var(--viz-tri);
+    --color-viz-tri-text: var(--viz-tri-text);
+
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* 4. base */
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+    html {
+        @apply font-sans;
+    }
+    /* ข้อความไทยต้องการบรรทัดสูงกว่าละติน ไม่งั้นสระบน/วรรณยุกต์ชนบรรทัดบน */
+    body {
+        @apply bg-background leading-relaxed text-foreground antialiased;
+    }
+    button:not(:disabled),
+    [role="button"]:not(:disabled) {
+        cursor: pointer;
+    }
+}
